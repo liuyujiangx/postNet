@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <!-- Load Posenet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+ </head>
+
+  <body>
+  	<img id='test_img' src='{{url_for("static",filename = file_pathx)}}' style="display: none;" width="{{img_width}}" height="{{img_height}}"/>
+  	<canvas id="myCanvas"  style="border:1px solid #000000;">
+  		
+  	</canvas>
+    <form action="http://127.0.0.1:5000/img_base64" method="post" >
+  		<input style='display: none;' type="text" name="url" id='url' value="" />
+  		<input id="tijiao" type="submit" value="提交" />
+  	</form>
+
+  </body>
+  <!-- Place your code in the script tag below. You can also use an external .js file -->
+<script>
+  	this.x_ind=1;
+  	this.y_ind=1;
+  	var w=document.getElementById('test_img').width;
+  	var h=document.getElementById('test_img').height;
+
+  	document.getElementById('myCanvas').width=w;
+	document.getElementById('myCanvas').height=h;
+	this.wid=parseInt(w);
+	this.hei=parseInt(h);
+  	//将图片放于canvas画布内
+  	var c=document.getElementById("myCanvas");
+	var canvas=c.getContext("2d");
+	var img=document.getElementById("test_img");
+	img.onload=function (){
+     canvas.drawImage(img,0,0);
+}
+
+  	function drawCircle(canvas,x,y){
+      canvas.beginPath()
+      canvas.arc(x*this.x_ind,y*this.y_ind,3,0,2*Math.PI)
+      canvas.fillStyle='aqua'
+      canvas.fill()
+   };
+   function drawLine(canvas,pos0,pos1){
+
+
+      canvas.moveTo(pos0.x*this.x_ind,pos0.y*this.y_ind)
+      canvas.lineTo(pos1.x * this.x_ind, pos1.y * this.y_ind)
+      canvas.lineWidth=2
+      canvas.strokeStyle='aqua'
+      canvas.stroke()
+   };
+
+
+  	//加载模型并传入图片
+    var flipHorizontal = false;
+    var imageElement = document.getElementById('test_img');
+/*{
+  architecture: 'MobileNetV1',
+  outputStride: 16,
+  inputResolution: { width: this.wid, height:this.hei },
+  multiplier: 1
+      }*/
+    posenet.load(
+    	{
+  architecture: 'ResNet50',
+  outputStride: 32,
+  inputResolution: { width: this.wid, height: this.hei},
+  quantBytes: 2
+}
+    )
+
+
+    	.then(function(net) {
+      const pose = net.estimateSinglePose(imageElement, {
+        flipHorizontal: false
+      });
+      return pose;
+    }).then(function(pose){
+    	if(pose.score>=0.3){
+    	for (i in pose.keypoints) {
+
+    		const point=pose.keypoints[i];
+    		if(point.score>=0.5){
+            const {y,x}=point.position;
+            this.drawCircle(this.canvas,x,y);
+         };
+    		//console.log(point);
+    	};
+    	const adjacentKeyPoints=posenet.getAdjacentKeyPoints(pose.keypoints,0.5);
+    	canvas.beginPath()
+    	for(i in adjacentKeyPoints){
+          const points=adjacentKeyPoints[i];
+          this.drawLine(this.canvas,points[0].position,points[1].position);
+
+
+        };canvas.closePath();
+        console.log('加载成功0');
+        let image =  new  Image();
+        mycanvas=document.getElementById("myCanvas");
+ 				image.src = mycanvas.toDataURL({format: 'image/png', quality:1, width:this.wid, height:this.hei});
+ 				var url = image.src.replace(/^data:image\/[^;]/, 'data:application/octet-stream');
+ 				//window.open(url);
+				//console.log(url)
+        //console.log('保存成功1')
+        document.getElementById('url').value=url;
+        var tijiao=document.getElementById('tijiao');
+        var e = document.createEvent("MouseEvents");
+        e.initEvent("click", true, true);
+        document.getElementById("tijiao").dispatchEvent(e);
+      };
+
+    })
+
+
+  </script>
+
+</html>
